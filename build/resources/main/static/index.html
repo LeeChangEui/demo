@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급진 가상 지도 (UI 개선)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* 기본 설정 */
+        :root {
+            --primary-color: #4A90E2; /* 파란색 계열 */
+            --primary-dark-color: #357ABD;
+            --secondary-color: #F8F9FA; /* 배경색 */
+            --border-color: #E0E0E0;
+            --text-color: #333;
+            --light-text-color: #666;
+            --card-bg: #FFFFFF;
+            --shadow-light: rgba(0, 0, 0, 0.08);
+            --shadow-medium: rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            color: var(--text-color);
+            background-color: var(--secondary-color);
+        }
+
+        /* 레이아웃 */
+        .container-wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-container {
+            flex: 2.5; /* 지도가 더 넓게 */
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            position: relative; /* 마커의 z-index를 위해 */
+        }
+
+        #mockMap {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            background-color: #C0C0C0; /* 지도 배경색 (약간 어두운 회색) */
+            position: relative; /* 마커 위치 지정을 위해 */
+            overflow: hidden;
+        }
+
+        .map-title {
+            padding: 15px 20px;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.3em;
+            color: var(--primary-color);
+            box-shadow: 0 2px 4px var(--shadow-light);
+            z-index: 1; /* 지도 위에 뜨도록 */
+        }
+
+        .sidebar {
+            flex: 1.5; /* 사이드바 비율 조정 */
+            padding: 30px;
+            overflow-y: auto;
+            background-color: var(--secondary-color);
+            box-shadow: 0 0 10px var(--shadow-light);
+            z-index: 2; /* 지도 위에 뜨도록 */
+        }
+
+        /* 공통 스타일 */
+        h1, h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            font-weight: 700;
+        }
+
+        form div {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 400;
+            color: var(--light-text-color);
+            font-size: 0.95em;
+        }
+
+        input[type="text"], input[type="number"], textarea {
+            width: calc(100% - 20px); /* 패딩 고려 */
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1em;
+            box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2); /* 포커스 시 그림자 */
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 6px var(--shadow-light);
+        }
+
+        button:hover {
+            background-color: var(--primary-dark-color);
+            transform: translateY(-2px); /* 살짝 위로 */
+            box-shadow: 0 6px 8px var(--shadow-medium);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px var(--shadow-light);
+        }
+
+        /* 장소 목록 */
+        #placeList {
+            margin-top: 30px;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 25px;
+        }
+
+        .place-item {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px var(--shadow-light);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .place-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px var(--shadow-medium);
+        }
+
+        .place-item strong {
+            color: var(--primary-color);
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .place-item span {
+            font-size: 0.9em;
+            color: var(--light-text-color);
+            line-height: 1.4;
+        }
+
+        .loading-message {
+            text-align: center;
+            color: var(--light-text-color);
+            font-style: italic;
+            padding: 20px;
+        }
+
+        /* 가상 지도 마커 */
+        .map-marker {
+            position: absolute;
+            width: 18px; /* 마커 크기 키움 */
+            height: 18px;
+            background-color: #E74C3C; /* 선명한 빨간색 */
+            border-radius: 50%;
+            border: 3px solid #FFFFFF; /* 흰색 테두리 */
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.4);
+            z-index: 10;
+            transition: all 0.2s ease-out; /* 애니메이션 효과 */
+        }
+        .map-marker:hover {
+            transform: translate(-50%, -65%) scale(1.2); /* 호버 시 위로 올라오면서 커짐 */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 12; /* 호버 시 다른 마커 위로 */
+        }
+        .map-marker-label {
+            position: absolute;
+            white-space: nowrap;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            transform: translate(-50%, -150%); /* 마커 위에 표시 */
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            z-index: 11;
+        }
+        .map-marker:hover .map-marker-label {
+            opacity: 1;
+            transform: translate(-50%, -170%); /* 호버 시 레이블도 살짝 올라옴 */
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .container-wrapper {
+                flex-direction: column; /* 작은 화면에서는 세로로 배치 */
+            }
+            .map-container {
+                flex: 1; /* 지도가 상단을 차지 */
+                min-height: 300px; /* 최소 높이 설정 */
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .sidebar {
+                flex: 1;
+                padding: 20px;
+                box-shadow: none; /* 작은 화면에서는 그림자 제거 */
+            }
+            h1, h2 {
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+            }
+            input[type="text"], input[type="number"], textarea {
+                width: calc(100% - 16px);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <div class="map-container">
+        <div class="map-title">가상 지도 영역 (서울 중심: 37.56, 126.97)</div>
+        <div id="mockMap"></div> </div>
+
+    <div class="sidebar">
+        <h1>장소 관리</h1>
+
+        <h2>새로운 장소 등록</h2>
+        <form id="createPlaceForm">
+            <div>
+                <label for="name">장소 이름</label>
+                <input type="text" id="name" required placeholder="예: 남산타워">
+            </div>
+            <div>
+                <label for="latitude">위도</label>
+                <input type="number" id="latitude" step="any" required placeholder="예: 37.5512">
+            </div>
+            <div>
+                <label for="longitude">경도</label>
+                <input type="number" id="longitude" step="any" required placeholder="예: 126.9882">
+            </div>
+            <div>
+                <label for="address">주소 (선택)</label>
+                <input type="text" id="address" placeholder="예: 서울 용산구 남산공원길 105">
+            </div>
+            <div>
+                <label for="description">설명 (선택)</label>
+                <textarea id="description" rows="3" placeholder="예: 서울 야경 명소"></textarea>
+            </div>
+            <div>
+                <label for="imageUrl">이미지 URL (선택)</label>
+                <input type="text" id="imageUrl" placeholder="예: https://example.com/namsan.jpg">
+            </div>
+            <div>
+                <label for="apiPlaceId">API 장소 ID (선택)</label>
+                <input type="text" id="apiPlaceId" placeholder="예: ChIJN-E2t_yfkDUR4h6c-w6-Lg">
+            </div>
+            <button type="submit">장소 등록하기</button>
+        </form>
+
+        <h2>등록된 장소 목록</h2>
+        <button onclick="fetchPlacesAndDisplayOnMap()">장소 목록 새로고침</button>
+        <div id="placeList">
+            <p class="loading-message">장소를 불러오는 중...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = 'http://localhost:8080/api/places'; // 백엔드 API 주소
+
+    // 가상 지도 설정 (서울 중심 근처를 기준으로 좌표를 픽셀로 변환)
+    const MAP_CENTER_LAT = 37.56;
+    const MAP_CENTER_LON = 126.97;
+    const LAT_PER_PIXEL = 0.0001; // 1 픽셀당 위도 변화량 (가상 값)
+    const LON_PER_PIXEL = 0.00015; // 1 픽셀당 경도 변화량 (가상 값)
+
+    let currentMarkers = []; // 현재 지도에 표시된 마커 DOM 요소들을 저장
+
+    // 위도, 경도 -> 지도 내부 픽셀 좌표 변환 함수
+    function latLonToPixel(latitude, longitude, mapDiv) {
+        const mapRect = mapDiv.getBoundingClientRect(); // 지도의 현재 크기
+        const mapWidth = mapRect.width;
+        const mapHeight = mapRect.height;
+
+        // 중심을 기준으로 상대적인 픽셀 위치 계산
+        const deltaLat = latitude - MAP_CENTER_LAT;
+        const deltaLon = longitude - MAP_CENTER_LON;
+
+        // 픽셀 값으로 변환 (음수는 왼쪽/아래, 양수는 오른쪽/위)
+        const pixelX = (deltaLon / LON_PER_PIXEL) + (mapWidth / 2);
+        const pixelY = (mapHeight / 2) - (deltaLat / LAT_PER_PIXEL); // Y축은 위로 갈수록 작아짐
+
+        return { x: pixelX, y: pixelY };
+    }
+
+    // 장소 목록을 가져와서 가상 지도에 표시하고 목록에 업데이트하는 함수
+    async function fetchPlacesAndDisplayOnMap() {
+        const placeListDiv = document.getElementById('placeList');
+        const mockMapDiv = document.getElementById('mockMap');
+        placeListDiv.innerHTML = '<p class="loading-message">장소를 불러오는 중...</p>';
+
+        // 기존 마커 제거
+        currentMarkers.forEach(marker => marker.remove());
+        currentMarkers = [];
+
+        try {
+            const response = await fetch(API_BASE_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const places = await response.json();
+
+            if (places.length === 0) {
+                placeListDiv.innerHTML = '<p class="loading-message">등록된 장소가 없습니다.</p>';
+            } else {
+                placeListDiv.innerHTML = '';
+                places.forEach(place => {
+                    // 1. 지도에 마커 추가
+                    const pixelCoords = latLonToPixel(place.latitude, place.longitude, mockMapDiv);
+
+                    // 지도를 벗어나는 마커는 표시하지 않음
+                    if (pixelCoords.x >= 0 && pixelCoords.x <= mockMapDiv.offsetWidth &&
+                        pixelCoords.y >= 0 && pixelCoords.y <= mockMapDiv.offsetHeight) {
+
+                        const marker = document.createElement('div');
+                        marker.className = 'map-marker';
+                        marker.style.left = `${pixelCoords.x}px`;
+                        marker.style.top = `${pixelCoords.y}px`;
+
+                        const label = document.createElement('span');
+                        label.className = 'map-marker-label';
+                        label.textContent = place.name;
+                        marker.appendChild(label);
+
+                        mockMapDiv.appendChild(marker);
+                        currentMarkers.push(marker); // 마커 DOM 요소 저장
+
+                        // 마커 클릭 이벤트
+                        marker.addEventListener('click', () => {
+                            alert(`클릭된 장소: ${place.name}\n위도: ${place.latitude}\n경도: ${place.longitude}\n주소: ${place.address || '없음'}\n설명: ${place.description || '없음'}`);
+                        });
+
+                    } else {
+                        console.warn(`장소 '${place.name}' (${place.latitude}, ${place.longitude})는 현재 지도 영역 밖에 있습니다.`);
+                    }
+
+                    // 2. 목록에 장소 정보 추가
+                    const placeItem = document.createElement('div');
+                    placeItem.className = 'place-item';
+                    placeItem.innerHTML = `
+                            <strong>${place.name}</strong><br>
+                            <span>위도: ${place.latitude}, 경도: ${place.longitude}</span><br>
+                            <span>주소: ${place.address || '정보 없음'}</span>
+                        `;
+                    placeListDiv.appendChild(placeItem);
+                });
+            }
+        } catch (error) {
+            console.error('장소 목록을 가져오는 데 실패했습니다:', error);
+            placeListDiv.innerHTML = `<p style="color: red;" class="loading-message">장소 목록을 불러오는 중 오류 발생: ${error.message}</p>`;
+        }
+    }
+
+    // 새 장소를 등록하는 함수 (이전과 동일)
+    document.getElementById('createPlaceForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('name').value;
+        const latitude = parseFloat(document.getElementById('latitude').value);
+        const longitude = parseFloat(document.getElementById('longitude').value);
+        const address = document.getElementById('address').value;
+        const description = document.getElementById('description').value;
+        const imageUrl = document.getElementById('imageUrl').value;
+        const apiPlaceId = document.getElementById('apiPlaceId').value;
+
+        const placeData = {
+            name, latitude, longitude, address, description, imageUrl, apiPlaceId
+        };
+
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(placeData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const newPlace = await response.json();
+            alert(`장소 '${newPlace.name}'이(가) 성공적으로 등록되었습니다!`);
+            document.getElementById('createPlaceForm').reset();
+            fetchPlacesAndDisplayOnMap();
+        } catch (error) {
+            console.error('장소 등록에 실패했습니다:', error);
+            alert(`장소 등록 실패: ${error.message}`);
+        }
+    });
+
+    // 페이지 로드 시 장소 목록 자동으로 불러오기
+    window.onload = fetchPlacesAndDisplayOnMap;
+
+    // 창 크기 변경 시 마커 위치 재조정 (가상 지도의 크기가 변하면 마커 위치도 변해야 하므로)
+    window.addEventListener('resize', fetchPlacesAndDisplayOnMap);
+</script>
+
+</body>
+</html>
