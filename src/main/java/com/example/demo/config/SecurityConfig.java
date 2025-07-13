@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // 개발 단계에서 Postman 등으로 테스트할 때 CSRF 비활성화
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/places/**").permitAll() // "/api/places/**" 경로 모든 요청 허용
+                        .requestMatchers("/api/users/**").permitAll()
                         .anyRequest().permitAll() // 모든 엔드포인트에 대한 접근을 허용 (개발용으로 가장 간단)
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())

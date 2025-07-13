@@ -7,11 +7,11 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Getter
 @Setter
-public class PlaceUpdateResponseDto { //수정된 정보
+@NoArgsConstructor
+@AllArgsConstructor
+public class PlaceUpdateResponseDto {
     private String placeId;
-    private LocalDateTime updateAt;
+    private LocalDateTime updatedAt;
 }

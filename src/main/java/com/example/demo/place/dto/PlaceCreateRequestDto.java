@@ -1,28 +1,21 @@
 package com.example.demo.place.dto;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.math.BigDecimal;
+
+import java.math.BigDecimal; // 추가: 위도, 경도, 주소, apiPlaceId는 요청 시에도 필요
+import java.util.List;
+
 @Getter
 @Setter
-public class PlaceCreateRequestDto { //placeCreateDTO
-
-    @NotBlank(message = "장소 이름은 필수 입니다.")
+@NoArgsConstructor
+public class PlaceCreateRequestDto {
     private String name;
-
-    @NotNull(message = "위도는 필수입니다.")
-    private BigDecimal latitude;
-
-    @NotNull(message = "경도는 필수입니다.")
-    private BigDecimal longitude;
-
-    private String address;
-
+    private BigDecimal latitude; // 장소 등록 시 위도
+    private BigDecimal longitude; // 장소 등록 시 경도
+    private String address;      // 장소 등록 시 주소
     private String description;
-
-    private String imageUrl;
-
-    private String apiPlaceId;
+    private List<String> imageUrls; // 이미지 URL 리스트
+    private String apiPlaceId;   // 외부 API 장소 ID
 }
